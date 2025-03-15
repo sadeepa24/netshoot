@@ -1,0 +1,8 @@
+*.json
+*.txt
+*.dt
+*.exe
+binary
+writePayloadForTest_test.go
+ssl
+*.pd
