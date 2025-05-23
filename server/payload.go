@@ -3,9 +3,11 @@ package server
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"io"
 	"net"
+	"sync"
 	"time"
 
 	com "github.com/sadeepa24/netshoot/common"
@@ -26,6 +28,9 @@ type PayloadServer struct {
 	writeTimeout time.Duration
 	readTimeout time.Duration
 
+	bytepool sync.Pool
+	mixedHandler *MixedHandler
+
 }
 
 
@@ -43,9 +48,25 @@ func NewPayloadServer(ctx context.Context, logger *zap.Logger, conf config.Paylo
 	ps.payloads = allpl
 	ps.payloadFirstSorted = allpl.FirstPart()
 
-	ps.listner, err = NewMixedLs(conf.Ls)
+
+	laddr, err := net.ResolveTCPAddr("tcp", conf.Ls.ListenAddr)
 	if err != nil {
 		return nil, err
+	}
+	ps.listner, err = net.ListenTCP("tcp", laddr)
+	if err != nil {
+		return nil, err
+	}
+	if conf.Ls.Tls.Enabled {
+		ps.mixedHandler, err = NewMixedHandler(ctx, conf.Ls.Tls)
+		if err != nil {
+			return nil, err
+		}
+	}
+	ps.bytepool = sync.Pool{
+		New: func() any {
+			return make([]byte, len(ps.payloadFirstSorted[len(ps.payloadFirstSorted)-1]))
+		},
 	}
 
 	return ps, nil
@@ -62,9 +83,11 @@ func (p *PayloadServer) Start() error {
 			conn, err := p.listner.Accept()
 			if err != nil {
 				continue
-				//TODO: handle propaly
 			}
 			p.logger.Debug("connection recived " + conn.RemoteAddr().String())
+			if tlsconn, ok := conn.(*tls.Conn); ok {
+				p.logger.Debug("server tls handshake success", zap.String("sni", tlsconn.ConnectionState().ServerName))
+			}
 			go p.handleconn(conn)
 		}
 	}()
@@ -80,10 +103,20 @@ func(p *PayloadServer) Close() error {
 
 
 func (p *PayloadServer) handleconn(conn net.Conn) {
+	var (
+		err error
+		payloadNumber int
+	)
+	if p.mixedHandler != nil {
+		conn, err = p.mixedHandler.handle(conn)
+		if err != nil {
+			p.logger.Error("Connection Prehandle Err MixedHandler err ", zap.Error(err))
+			return
+		}
+	}
 	conn.SetDeadline(time.Now().Add(p.readTimeout))
 	defer conn.Close()
-	payloadNumber := 0
-	payloadNumber, err := p.detectPayloadStrict(conn)
+	payloadNumber, err = p.detectPayloadStrict(conn)
 	if err != nil {
 		p.logger.Error("Payload Detect Failed: ", zap.Error(err))
 		return
@@ -93,12 +126,10 @@ func (p *PayloadServer) handleconn(conn net.Conn) {
 	payload := p.payloads[payloadNumber]
 	host, err := payload.ReadAfterFirst(conn)
 	if err != nil {
-		p.logger.Error("Payload Read Error After Detect Payload: ", zap.Error(err))
+		p.logger.Error("Payload Read Error After Detect Payload: ", zap.Error(err), zap.String("host", host))
 		return
 	}
-	
-	p.logger.Info("recived host: " + host)
-
+	p.logger.Info("recived host in payload", zap.String("host", host), zap.Int("payload", payloadNumber))
 	conn.SetDeadline(time.Now().Add(p.writeTimeout))
 	_, err = payload.WriteRes(conn)
 	if err != nil {
@@ -113,22 +144,20 @@ func (p *PayloadServer) handleconn(conn net.Conn) {
 
 func (p *PayloadServer) detectPayloadStrict(conn net.Conn) (int, error) {
 	payloadNumber := 0
-	totalPayload := []byte{}
+	totalread := 0
+	cache := p.bytepool.Get().([]byte)
+	//lint:ignore SA6002 reason
+	defer p.bytepool.Put(cache)
 	for i, pload := range p.payloadFirstSorted {
-		oldlen := 0 
-		if i > 0 {
-			oldlen = len(p.payloadFirstSorted[i-1])
-		}
-		tothis := make([]byte, len(pload)-oldlen)
-		_, err := io.ReadFull(conn, tothis)
+		_, err := io.ReadFull(conn, cache[totalread:totalread+(len(pload)-totalread)])
 		if err != nil {
 			return payloadNumber, err
 		}
-		totalPayload = append(totalPayload, tothis...)
-		if bytes.Equal(pload, totalPayload) {
+		if bytes.Equal(pload, cache[:len(pload)]) {
 			payloadNumber = i
 			break
 		}
+		totalread = len(pload)
 		if i == len(p.payloadFirstSorted)-1 {
 			return payloadNumber, ErrPayloadNotfound
 		}

@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"net"
 	"time"
 
@@ -30,10 +29,11 @@ type PayloadSender struct {
 	readTimeout time.Duration
 
 	logger *zap.Logger
+	
 }
 
 
-func NewPayloadSender(ctx context.Context, conf config.PayloadSender, logger *zap.Logger) (*PayloadSender, error){
+func NewPayloadSender(ctx context.Context, conf config.PayloadSender, logger *zap.Logger) (*PayloadSender, error){	
 	sender := PayloadSender{
 		Dialer: net.Dialer{
 			Timeout: conf.DTimeout(),
@@ -82,16 +82,16 @@ func (p *PayloadSender) Test(host string) result.Result {
 			res.PayloadInfo = append(res.PayloadInfo, sres)
 			continue
 		}
-		p.logger.Debug("dialing success host: " + host)
+		p.logger.Debug("tcp dialing success", zap.String("host", host))
 
 		if p.tlsconf != nil {
 			
 			tlsconn := tls.Client(conn, &tls.Config{  //we have to copy tls.config to use concurrently because servername changes everytime
-				ServerName: host,
 				MaxVersion: p.tlsconf.MaxVersion,
 				MinVersion: p.tlsconf.MinVersion,
 				NextProtos: p.tlsconf.NextProtos,
 				InsecureSkipVerify: p.tlsconf.InsecureSkipVerify,
+				ServerName: host,
 			})
 			sres.Tls = result.TlsInfo{
 				Servername: host,
@@ -116,7 +116,7 @@ func (p *PayloadSender) Test(host string) result.Result {
 			conn.Close()
 			continue
 		}
-		p.logger.Debug("payload write success host: " + host)
+		p.logger.Debug("payload write success", zap.String("host", host))
 		conn.SetDeadline(time.Now().Add(p.readTimeout))
 		if _, err = payload.ReadRes(conn); err != nil {
 			sres.Error = "payload response read err: " + err.Error()
@@ -124,7 +124,7 @@ func (p *PayloadSender) Test(host string) result.Result {
 			conn.Close()
 			continue
 		}
-		p.logger.Debug("payload read success host: "+ host)
+		p.logger.Debug("payload read success", zap.String("host", host))
 		sres.Maybe = true
 		sres.MaxSpeed, err = speedtest(conn, p.speedtestSize)
 		if err != nil {
@@ -133,7 +133,7 @@ func (p *PayloadSender) Test(host string) result.Result {
 			conn.Close()
 			continue
 		}
-		p.logger.Debug("Speedtest success", zap.Float64("speed", sres.MaxSpeed))
+		p.logger.Debug("Speedtest success", zap.Float64("speed", sres.MaxSpeed), zap.String("host", host))
 		sres.Success = true
 		res.PayloadInfo = append(res.PayloadInfo, sres)
 		conn.Close()
@@ -155,14 +155,16 @@ func (p *PayloadSender) Dial() (net.Conn, error) {
 			return conn, nil
 		}
 	}
-	return nil, errors.Join(ErrAllRetryFailed, err,)
+	return nil, &TcpRetryErr{internalerr: err}
 }
 
+type TcpRetryErr struct {
+	internalerr error
+}
 
-
-var (
-	ErrAllRetryFailed  = errors.New("all tcp retry failed")
-)
+func (t *TcpRetryErr) Error() string {
+	return "all tcp handshake retry failed: " + t.internalerr.Error()
+}
 
 //satisfy the interface
 func (p *PayloadSender) Start() error {

@@ -61,8 +61,8 @@ func (c *Server) NodeCount() int {
 
 func Speedtest(conn net.Conn) error {
 	var size uint16
+	conn.SetDeadline(time.Now().Add(1 * time.Second))
 	err := binary.Read(conn, binary.LittleEndian, &size)
-	
 	if err != nil {
 		return err
 	}

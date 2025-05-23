@@ -67,7 +67,7 @@ func (c *Client) MakeTest(host string, rg *com.Getresult) {
 
 // bufsize should be in MB format 
 // Ex - if bufsize 2MB bufsize = 2
-// also Return Speed As MBps 
+// also Return Speed As Mbps 
 func speedtest(conn net.Conn, bufsize int) (float64, error) {
 	conn.SetDeadline(time.Now().Add(20 * time.Duration(bufsize) * time.Second)) // expect minimum 50KBps
 	ss := uint16(bufsize)
@@ -120,7 +120,7 @@ func speedtest(conn net.Conn, bufsize int) (float64, error) {
 		return -1, ErrSpeedTestNotime 
 	}
 
-	return float64(bufsize)/elp.Seconds(), err
+	return (float64(bufsize)/elp.Seconds()) * 8, err
 }
 
 var ErrSpeedTestRes = errors.New("speedtest response not recived")

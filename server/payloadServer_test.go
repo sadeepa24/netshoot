@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -93,6 +94,30 @@ func TestServer(t *testing.T) {
 
 }
 
+func TestPayloadFIrstDetect(t *testing.T) {
+	server := PayloadServer{
+		payloadFirstSorted: [][]byte{
+			[]byte("hello"),
+			[]byte("second Payload Longer"),
+			[]byte("third payload much longer"),
+		},
+	}
+	server.bytepool = sync.Pool{
+		New: func() any {
+			return make([]byte, len(server.payloadFirstSorted[len(server.payloadFirstSorted)-1]))
+		},
+	}
+
+	testconn := &serverTestConn{
+		buf: &bytes.Buffer{},
+	}
+	testconn.buf.Write([]byte("third payload much longer"))
+	payloadnum, err := server.detectPayloadStrict(testconn)
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println(payloadnum)
+}
 
 
 
@@ -107,7 +132,6 @@ func (s *serverTestConn) Read(b []byte) (n int, err error) {
 }
 
 func (s *serverTestConn) Write(b []byte) (n int, err error) {
-	fmt.Println(string(b))
 	return len(b), nil
 }
 
