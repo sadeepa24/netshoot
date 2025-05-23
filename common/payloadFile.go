@@ -51,22 +51,22 @@ func CreatePayloadFile(payloads, response [][]byte, names []string, writer io.Wr
 		return ErrNotEnogufpayloadOrRes
 	}
 	var err error
-	if err = binary.Write(writer, binary.LittleEndian, uint16(len(payloads))); err != nil {
+	if err = binary.Write(writer, binary.BigEndian, uint16(len(payloads))); err != nil {
 		return err
 	}
 
 	for i := 0; i < len(payloads); i++ {
-		if err = binary.Write(writer, binary.LittleEndian, uint8(len(names[i]))); err != nil {
+		if err = binary.Write(writer, binary.BigEndian, uint8(len(names[i]))); err != nil {
 			return err
 		}
 		_, err = writer.Write([]byte(names[i]))
 		if err != nil {
 			return err
 		}
-		if err = binary.Write(writer, binary.LittleEndian, uint32(len(payloads[i]))); err != nil {
+		if err = binary.Write(writer, binary.BigEndian, uint32(len(payloads[i]))); err != nil {
 			return err
 		}
-		if err = binary.Write(writer, binary.LittleEndian, uint32(len(response[i]))); err != nil {
+		if err = binary.Write(writer, binary.BigEndian, uint32(len(response[i]))); err != nil {
 			return err
 		}
 		_, err = writer.Write([]byte(payloads[i]))
@@ -88,7 +88,7 @@ func readAllPayload(reader io.Reader) ([]Payload, error) {
 	var payload []Payload
 	
 	var payloadCount uint16
-	if err := binary.Read(reader, binary.LittleEndian, &payloadCount); err != nil {
+	if err := binary.Read(reader, binary.BigEndian, &payloadCount); err != nil {
 		return payload, err
 	}
 
@@ -109,7 +109,7 @@ func readOnePayload(reader io.Reader) (Payload, error) {
 
 	// Read payloadNameLength (1 byte)
 	var payloadNameLength byte
-	if err := binary.Read(reader, binary.LittleEndian, &payloadNameLength); err != nil {
+	if err := binary.Read(reader, binary.BigEndian, &payloadNameLength); err != nil {
 		return payload, err
 	}
 
@@ -122,13 +122,13 @@ func readOnePayload(reader io.Reader) (Payload, error) {
 
 	// Read PayloadLen (4 bytes)
 	var payloadLen uint32
-	if err := binary.Read(reader, binary.LittleEndian, &payloadLen); err != nil {
+	if err := binary.Read(reader, binary.BigEndian, &payloadLen); err != nil {
 		return payload, err
 	}
 
 	// Read ResponseLen (4 bytes)
 	var responseLen uint32
-	if err := binary.Read(reader, binary.LittleEndian, &responseLen); err != nil {
+	if err := binary.Read(reader, binary.BigEndian, &responseLen); err != nil {
 		return payload, err
 	}
 

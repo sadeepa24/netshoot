@@ -71,7 +71,7 @@ func (c *Client) MakeTest(host string, rg *com.Getresult) {
 func speedtest(conn net.Conn, bufsize int) (float64, error) {
 	conn.SetDeadline(time.Now().Add(20 * time.Duration(bufsize) * time.Second)) // expect minimum 50KBps
 	ss := uint16(bufsize)
-	err := binary.Write(conn, binary.LittleEndian, &ss)
+	err := binary.Write(conn, binary.BigEndian, &ss)
 	if err != nil {
 		return 0, err
 	}

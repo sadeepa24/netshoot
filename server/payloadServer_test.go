@@ -98,8 +98,10 @@ func TestPayloadFIrstDetect(t *testing.T) {
 	server := PayloadServer{
 		payloadFirstSorted: [][]byte{
 			[]byte("hello"),
+			[]byte("samep"),
 			[]byte("second Payload Longer"),
 			[]byte("third payload much longer"),
+			[]byte("abcde abcdefg abcd abcdef"),
 		},
 	}
 	server.bytepool = sync.Pool{
@@ -111,7 +113,7 @@ func TestPayloadFIrstDetect(t *testing.T) {
 	testconn := &serverTestConn{
 		buf: &bytes.Buffer{},
 	}
-	testconn.buf.Write([]byte("third payload much longer"))
+	testconn.buf.Write([]byte("hello"))
 	payloadnum, err := server.detectPayloadStrict(testconn)
 	if err != nil {
 		t.Error(err)
