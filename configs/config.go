@@ -23,6 +23,7 @@ var (
 
 type HostMgConf struct {
 	Hostfile
+	Interval time.Duration `json:"interval"`
 }
 
 type PayloadSender struct {
@@ -53,7 +54,8 @@ func (p PayloadSender) DTimeout() time.Duration {
 
 func (p PayloadSender) LocalAddr() net.Addr {
 	if p.Local_addr != "" {
-		addr, err := net.ResolveTCPAddr("ip", p.Local_addr+ ":0")
+		addr, err := net.ResolveTCPAddr("tcp", p.Local_addr+ ":0")
+		addr.Port = 0
 		if err == nil {
 			return addr
 		}
@@ -219,5 +221,15 @@ type TlsServer struct {
 	Enabled bool  `json:"enabled"`
 	Cert string  `json:"cert"`
 	Key string  `json:"key"`
-
+	TimeOut string  `json:"timeout"`
+}
+func (p TlsServer) TlsTimeout()time.Duration  {
+	if p.TimeOut == "" {
+		return DefaultTAuthTimeout
+	}
+	time, err := time.ParseDuration(p.TimeOut)
+	if err != nil {
+		return DefaultSrvtRTimeout
+	}
+	return time
 }

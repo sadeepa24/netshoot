@@ -3,6 +3,7 @@ package hostmanager
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/sadeepa24/netshoot/client"
 	com "github.com/sadeepa24/netshoot/common"
@@ -24,6 +25,7 @@ type HostManager struct {
 	done chan struct{}
 	stopsig chan struct{}
 
+	interval time.Duration
 	// over *atomic.Bool
 	
 
@@ -39,6 +41,7 @@ func New(ctx context.Context, client *client.Client, resultRW *result.ResultWrit
 		resultRW: resultRW,
 		logger: logger,
 		stopsig: stopsig,
+		interval: conf.Interval,
 		//over: new(atomic.Bool),
 	}
 
@@ -75,6 +78,7 @@ func (r *HostManager) Close() error {
 
 
 func (r *HostManager)  run() {	
+	var nextCheck []string
 	for r.file.available() {
 		//gracefull shutdonw stuff
 		select {
@@ -89,9 +93,10 @@ func (r *HostManager)  run() {
 			default:
 			
 		}
-
-		nextCheck := r.file.next()
-		
+		if r.interval > 0 {
+			time.Sleep(r.interval)
+		}
+		nextCheck = r.file.next()
 		r.resultgt.Reset(len(nextCheck))
 		for _, host := range nextCheck {
 			go r.client.MakeTest(host, r.resultgt)

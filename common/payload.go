@@ -38,7 +38,7 @@ func (pl *Payload)  WriteTo(writer io.Writer, host string) error {
 }
 
 func (pl *Payload)  ReadRes(conn io.Reader) (int, error) {
-	res := make([]byte, pl.resLen)
+	res := make([]byte, pl.resLen) //FIXME: can be use sync.Pool
 	return io.ReadFull(conn, res)
 }
 
@@ -98,25 +98,17 @@ func (pl *Payload) ReadAfterFirst(reader io.Reader) (string, error) {
 	}
 
 	toread := (pl.fullLength - (len(pl.parted[0]) + len(todetect))) + (shouldReadHostCount * hostLen)
-	totalRead = 0 
-
-	ch = make([]byte, 64)
-
+	ch = make([]byte, toread)
 	for {
 		n, err := reader.Read(ch)
+		ch = ch[n:]
 		if err != nil {
-			totalRead += n
-			if totalRead == toread {
-				return string(host), nil
-			}
 			return string(host), err
 		}
-		totalRead += n
-		if totalRead == toread {
+		if len(ch) == 0 {
 			return string(host), nil
 		}
 	}
-
 }
 
 

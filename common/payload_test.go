@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"testing"
+	"time"
 )
 
 func TestPayload(t *testing.T) {
@@ -25,7 +26,7 @@ func TestPayload(t *testing.T) {
 
 	testwriter := &testRW{}
 	
-	testPayload.WriteTo(testwriter, "--s-s-s-ssssss-ss-ss-sssss-s")
+	testPayload.WriteTo(testwriter, "s--s-s-s-ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss-ss-ss-sssss-s")
 	fmt.Println(string(testwriter.allrecived))
 
 	mt := make([]byte, len(testParted[0]))
@@ -33,11 +34,14 @@ func TestPayload(t *testing.T) {
 	testwriter.Read(mt)
 	fmt.Println(string(testwriter.allrecived))
 
+	s := time.Now()
 	host, err := testPayload.ReadAfterFirst(testwriter)
+	fmt.Println(time.Since(s).Milliseconds())
 	fmt.Println("captured host: ", host)
 	if err != nil {
 		log.Fatal(err)
 	}
+	
 
 	fmt.Println(len(testwriter.allrecived))
 	
