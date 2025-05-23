@@ -3,83 +3,95 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/alecthomas/kingpin"
 	"github.com/sadeepa24/netshoot"
+	"github.com/sadeepa24/netshoot/cmd/tools"
 	config "github.com/sadeepa24/netshoot/configs"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+)
+
+var (
+	versionNum   = ""
+)
+
+var (
+	app = kingpin.New("netshoot", "An example application using Kingpin.")
+	run        = app.Command("run", "run netshoot")
+	configDir = run.Flag("config", "config path").
+			Short('c').
+			Default("config.json").
+			String()
+	version     = app.Command("version", "netshoot version")
+	gen = app.Command("generate", "generate payload file")
+	pfiledir = gen.Flag("file", "payload info file").Short('i').Required().String()
 )
 
 func main() {
-	logger, _ := zap.NewDevelopment()
-	/*
-	ss := config.Config{
-		Client: config.Client{
-			Nodes: []config.ClientNode{
-				{
-					Type: "payload",
-					PayloadSender: &config.PayloadSender{
-						HandshakeRetry: 5,
-						PayloadFile:    "payload.dt",
-						TestBufSize:    3,
-						ServerAddr:     "127.0.0.1:90",
-						Tls: config.TlsConf{
-							Enabled: false,
-						},
-					},
-				},
-			},
-		},
-		Host: config.HostMgConf{
-			Hostfile: config.Hostfile{
-				MaxConcurrent: 10,
-				Hostfile:      "host.txt",
-			},
-		},
-		Result: config.Result{
-			OutputFile:   "out.json",
-			ProgressFile: "prog.json",
-		},
-		Server: config.Server{
-			Nodes: []config.ServerNode{
-				{
-					Type: "payload",
-					PayloadServer: &config.PayloadServer{
-						PayloadFile: "payload.dt",
-						Ls: config.LsConfig{
-							ListenAddr: "127.0.0.1:90",
-							Tls: config.TlsServer{
-								Enabled: false,
-							},
-						},
-					},
-				},
-			},
-		},
+	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
+		case run.FullCommand():
+			netshoot_run()
+		case version.FullCommand():
+			fmt.Println(versionNum)
+		case gen.FullCommand():
+			err := tools.GenPayloadFile(*pfiledir)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println("payload file created.")
 	}
 
-	ssss, err := json.Marshal(ss)
-	if err != nil {
-		logger.Fatal(err.Error())
-	}
-	f, err :=os.OpenFile("config.json", os.O_CREATE|os.O_RDWR, 0644) 
-	if err != nil {
-		return
-	}
-	f.Write(ssss)
-	return
-	*/
+}
 
-	configb, err := os.ReadFile("config.json")
+func netshoot_run() {
+
+	configb, err := os.ReadFile(*configDir)
 	if err != nil {
-		logger.Fatal("config file open err: " + err.Error())
+		log.Fatal("config file open err: " + err.Error())
 	}
 	var config config.Config
 	err = json.Unmarshal(configb, &config)
 	if err != nil {
-		logger.Fatal("config Unmarshal Err: " + err.Error())
+		log.Fatal("config Unmarshal Err: " + err.Error())
+	}
+
+	logconfig := zap.Config{
+		Level: config.Log.ZapLevel(),
+		Development: false,
+		DisableCaller: true,
+		DisableStacktrace: true,
+		Sampling: &zap.SamplingConfig{
+			Initial:    100,
+			Thereafter: 100,
+		},
+		Encoding: config.Log.Encoding,
+		EncoderConfig: zapcore.EncoderConfig{
+			TimeKey:        "ts",
+			LevelKey:       config.Log.ZapLevel().Level().CapitalString(),
+			NameKey:        "logger",
+			CallerKey:      "caller",
+			FunctionKey:    zapcore.OmitKey,
+			MessageKey:     "msg",
+			// StacktraceKey:  "stacktrace",
+			LineEnding:     zapcore.DefaultLineEnding,
+			EncodeLevel:    zapcore.CapitalLevelEncoder,
+			EncodeTime:     zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05"),
+			
+			EncodeDuration: zapcore.StringDurationEncoder,
+			EncodeCaller:   zapcore.ShortCallerEncoder,
+		},
+		OutputPaths: config.Log.Output,
+		ErrorOutputPaths: config.Log.Output,
+	}
+	logger, err := logconfig.Build()
+	if err != nil {
+		log.Fatal("logger build fail: " + err.Error())
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	shoot, err := netshoot.New(ctx, logger, config)
@@ -96,6 +108,4 @@ func main() {
 
 	shoot.Close()
 	cancel()
-
-
 }

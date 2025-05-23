@@ -1,4 +1,4 @@
-package main
+package tools
 
 import (
 	"encoding/hex"
@@ -24,7 +24,7 @@ type OnePayload struct {
 }
 
 
-func ReadPayloadInfo(path string) error {
+func GenPayloadFile(path string) error {
 	file, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -73,6 +73,7 @@ func ReadPayloadInfo(path string) error {
 	endFile, err := os.OpenFile(PfileInfo.Output, os.O_CREATE|os.O_RDWR, 0644)
 	
 	if err != nil {return err}
+	defer endFile.Close()
 	endFile.Truncate(0)
 	return com.CreatePayloadFile(allpayloads, res, names, endFile)
 }
