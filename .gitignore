@@ -7,3 +7,4 @@ writePayloadForTest_test.go
 ssl
 *.pd
 site/
+.goreleaser.yaml
