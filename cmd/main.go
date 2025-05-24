@@ -22,7 +22,7 @@ var (
 )
 
 var (
-	app = kingpin.New("netshoot", "An example application using Kingpin.")
+	app = kingpin.New("netshoot", "A versatile tool for discovering hosts and identifying tunnelable ones with many customizable options.")
 	run        = app.Command("run", "run netshoot")
 	configDir = run.Flag("config", "config path").
 			Short('c').

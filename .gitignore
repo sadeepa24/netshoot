@@ -8,3 +8,4 @@ ssl
 *.pd
 site/
 .goreleaser.yaml
+dist/
