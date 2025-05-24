@@ -45,7 +45,7 @@
 To build from source:
 
 ```bash
-git clone https://github.com/your-org/netshoot.git
+git clone https://github.com/sadeepa24/netshoot.git
 cd netshoot
 go build -o netshoot
 ```
@@ -67,8 +67,6 @@ go build -o netshoot
 Read Docs to Get Better Understand about Netshoot
 
 [Docs]()
-
----
 
 ---
 
