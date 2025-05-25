@@ -4,7 +4,7 @@
   "disabled": false,
   "dialer_timeout": "2s",
   "handshake_retry": 2,
-  "server_addr": "141.148.194.37:443",
+  "server_addr": "127.0.0.1:443",
   "payload_file": "http-payloads.dt",
   "speedtest_size": 1,
   "local_addr": "192.168.60.198",

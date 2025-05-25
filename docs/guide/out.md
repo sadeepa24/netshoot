@@ -178,7 +178,7 @@
 ### Extract Info
 
 මේකෙන් information extract කරගන්න අවශ්‍යනම් ඒ කියන්නෙ වැඩ කරන host file ටික වෙනම වගේ එකවර ගන්න ඕනනන්ම්, json path වගෙ use කරන්න පුලුවන්.
-online [JSONPATH](new:https://jsonpath.com/) වගේ tool එකක් use කරන්න පුලුවන්.
+online [JSONPATH](https://jsonpath.com/) වගේ tool එකක් use කරන්න පුලුවන්.
 
 - Example එකක් විදිහට
   මේකට output file එක upload කරලා json path එකට `$[?(@.PayloadInfo[?(@.MaxSpeed > 0)])].Host` දැම්මොත් speedtest එක 0 ට වැඩියෙන් ආපු සියලුම Host list එක ගන්න පුලුවන්.
