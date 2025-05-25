@@ -17,4 +17,4 @@
 }
 ```
 
-දැනට `payload` type එකේ node විතරයි තියෙන්නෙ. [payload](./server-nodes/payload.md)
+දැනට `payload` type එකේ node විතරයි තියෙන්නෙ. [payload](./client-nodes/payload.md)
